@@ -44,3 +44,30 @@ Example image:
 Extracted colors:
 
 ![Colors](https://raw.githubusercontent.com/marekm4/color-extractor/master/example/colors.png)
+
+Stable palettes for frame sequences (e.g. animated wallpapers):
+
+`SequenceExtractor` reuses the single-image extraction on every frame, then
+matches colors across frames so each color keeps a stable ID instead of
+flickering between near-identical values. Colors and weights are smoothed
+with an exponential moving average, and IDs survive short occlusions.
+
+```go
+extractor := color_extractor.NewSequenceExtractor(color_extractor.DefaultSequenceConfig())
+for _, frame := range frames {
+	palette := extractor.NextFrame(frame) // []PaletteColor{ID, Color, Weight}, sorted by weight
+	fmt.Println(palette)
+}
+```
+
+`SequenceConfig` knobs (see `DefaultSequenceConfig` for defaults):
+
+- `ColorCount` — target palette size; state never grows beyond this many slots.
+- `Smoothing` — EMA factor in [0, 1]; higher means smoother, slower changes.
+- `MatchDistance` — RGB distance below which a color keeps its ID; farther colors are new.
+- `MinWeight` — minimum frame fraction for a new color to enter the palette.
+- `MaxMissing` — frames a color may be absent (occluded) before its ID is retired.
+
+Empty or fully transparent frames add no colors and simply age existing
+slots; results are deterministic and memory stays bounded for arbitrarily
+long sequences.

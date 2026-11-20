@@ -33,6 +33,31 @@ func ExtractColors(image image.Image) []color.Color {
 }
 
 func ExtractColorsWithConfig(image image.Image, config Config) []color.Color {
+	bucketsAverages, totalCount := extractBuckets(image, config)
+
+	// sort buckets by bucket size
+	sort.Sort(sort.Reverse(ByCount(bucketsAverages)))
+
+	// export color.Color from bucket, ignore small buckets
+	colors := []color.Color{}
+	for _, avg := range bucketsAverages {
+		if avg.Count/totalCount > config.SmallBucket {
+			colors = append(colors, color.RGBA{
+				R: uint8(math.Round(avg.Red)),
+				G: uint8(math.Round(avg.Green)),
+				B: uint8(math.Round(avg.Blue)),
+				A: 255,
+			})
+		}
+	}
+
+	return colors
+}
+
+// extractBuckets averages the image's pixels into color buckets and returns
+// them together with the total (alpha-weighted) pixel count. Each bucket's
+// Count divided by the returned total is the bucket's weight in the image.
+func extractBuckets(image image.Image, config Config) ([]bucket, float64) {
 	width := image.Bounds().Dx()
 	height := image.Bounds().Dy()
 
@@ -83,21 +108,5 @@ func ExtractColorsWithConfig(image image.Image, config Config) []color.Color {
 		}
 	}
 
-	// sort buckets by bucket size
-	sort.Sort(sort.Reverse(ByCount(bucketsAverages)))
-
-	// export color.Color from bucket, ignore small buckets
-	colors := []color.Color{}
-	for _, avg := range bucketsAverages {
-		if avg.Count/totalCount > config.SmallBucket {
-			colors = append(colors, color.RGBA{
-				R: uint8(math.Round(avg.Red)),
-				G: uint8(math.Round(avg.Green)),
-				B: uint8(math.Round(avg.Blue)),
-				A: 255,
-			})
-		}
-	}
-
-	return colors
+	return bucketsAverages, totalCount
 }
